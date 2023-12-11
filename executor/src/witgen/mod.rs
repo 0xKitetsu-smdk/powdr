@@ -39,6 +39,13 @@ mod vm_processor;
 pub trait QueryCallback<T>: FnMut(&str) -> Result<Option<T>, String> + Send + Sync {}
 impl<T, F> QueryCallback<T> for F where F: FnMut(&str) -> Result<Option<T>, String> + Send + Sync {}
 
+pub fn chain_callbacks<T: FieldElement>(
+    mut c1: Box<dyn QueryCallback<T>>,
+    mut c2: Box<dyn QueryCallback<T>>,
+) -> impl QueryCallback<T> {
+    move |query| c1(query).or_else(|_| c2(query))
+}
+
 /// @returns a query callback that is never expected to be used.
 pub fn unused_query_callback<T>() -> impl QueryCallback<T> {
     |_| -> _ { unreachable!() }
@@ -53,15 +60,15 @@ pub struct MutableState<'a, 'b, T: FieldElement, Q: QueryCallback<T>> {
 
 pub struct WitnessGenerator<'a, 'b, T: FieldElement, Q: QueryCallback<T>> {
     analyzed: &'a Analyzed<T>,
-    fixed_col_values: &'b [(&'a str, Vec<T>)],
+    fixed_col_values: &'b [(String, Vec<T>)],
     query_callback: Q,
-    external_witness_values: Vec<(&'a str, Vec<T>)>,
+    external_witness_values: Vec<(String, Vec<T>)>,
 }
 
 impl<'a, 'b, T: FieldElement, Q: QueryCallback<T>> WitnessGenerator<'a, 'b, T, Q> {
     pub fn new(
         analyzed: &'a Analyzed<T>,
-        fixed_col_values: &'b [(&'a str, Vec<T>)],
+        fixed_col_values: &'b [(String, Vec<T>)],
         query_callback: Q,
     ) -> Self {
         WitnessGenerator {
@@ -74,7 +81,7 @@ impl<'a, 'b, T: FieldElement, Q: QueryCallback<T>> WitnessGenerator<'a, 'b, T, Q
 
     pub fn with_external_witness_values(
         self,
-        external_witness_values: Vec<(&'a str, Vec<T>)>,
+        external_witness_values: Vec<(String, Vec<T>)>,
     ) -> Self {
         WitnessGenerator {
             external_witness_values,
@@ -167,8 +174,8 @@ pub struct FixedData<'a, T> {
 impl<'a, T: FieldElement> FixedData<'a, T> {
     pub fn new(
         analyzed: &'a Analyzed<T>,
-        fixed_col_values: &'a [(&str, Vec<T>)],
-        external_witness_values: Vec<(&'a str, Vec<T>)>,
+        fixed_col_values: &'a [(String, Vec<T>)],
+        external_witness_values: Vec<(String, Vec<T>)>,
     ) -> Self {
         let mut external_witness_values = BTreeMap::from_iter(external_witness_values);
 

@@ -1,4 +1,3 @@
-use backend::BackendType;
 use number::write_polys_file;
 use number::FieldElement;
 use std::{
@@ -7,35 +6,6 @@ use std::{
     path::Path,
     process::Command,
 };
-
-use crate::compile_asm_string;
-
-pub fn verify_asm_string<T: FieldElement>(
-    file_name: &str,
-    contents: &str,
-    inputs: Vec<T>,
-    external_witness_values: Vec<(&str, Vec<T>)>,
-) {
-    let temp_dir = mktemp::Temp::new_dir().unwrap();
-    let (_, result) = compile_asm_string(
-        file_name,
-        contents,
-        inputs,
-        None,
-        &temp_dir,
-        true,
-        Some(BackendType::PilStarkCli),
-        external_witness_values,
-    )
-    .unwrap();
-
-    let result = result.unwrap();
-    write_constants_to_fs(&result.constants, &temp_dir);
-    write_commits_to_fs(&result.witness.unwrap(), &temp_dir);
-    write_constraints_to_fs(&result.constraints_serialization.unwrap(), &temp_dir);
-
-    verify(&temp_dir);
-}
 
 pub fn write_constants_to_fs<T: FieldElement>(constants: &[(String, Vec<T>)], output_dir: &Path) {
     let to_write = output_dir.join("constants.bin");
@@ -79,15 +49,17 @@ pub fn verify(temp_dir: &Path) {
         .output()
         .expect("failed to run pil verifier");
     if !verifier_output.status.success() {
-        panic!(
+        log::error!(
             "Pil verifier run was unsuccessful.\nStdout: {}\nStderr: {}\n",
             String::from_utf8_lossy(&verifier_output.stdout),
             String::from_utf8_lossy(&verifier_output.stderr)
         );
+        panic!("Pil verifier run was unsuccessful.");
     } else {
         let output = String::from_utf8(verifier_output.stdout).unwrap();
+        log::error!("PIL verifier output: {}", output);
         if !output.trim().ends_with("PIL OK!!") {
-            panic!("Verified did not say 'PIL OK': {output}");
+            panic!("Verified did not say 'PIL OK'.");
         }
     }
 }

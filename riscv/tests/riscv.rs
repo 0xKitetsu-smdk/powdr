@@ -1,12 +1,20 @@
 mod common;
 
+use std::path::PathBuf;
+
 use common::verify_riscv_asm_string;
-use compiler::verify_asm_string;
+use compiler::{
+    pipeline::Pipeline,
+    test_util::{verify_asm_string, verify_pipeline},
+};
 use mktemp::Temp;
 use number::GoldilocksField;
 use test_log::test;
 
-use riscv::CoProcessors;
+use riscv::{
+    continuations::{rust_continuations, rust_continuations_dry_run},
+    CoProcessors,
+};
 
 #[test]
 #[ignore = "Too slow"]
@@ -137,6 +145,48 @@ fn test_evm() {
 fn test_print() {
     let case = "print.rs";
     verify_file(case, vec![], &CoProcessors::base());
+}
+
+#[test]
+fn test_many_chunks_dry() {
+    // Compiles and runs the many_chunks.rs example with continuations, just computing
+    // and validating the bootloader inputs.
+    // Doesn't do a full witness generation, verification, or proving.
+    let case = "many_chunks.rs";
+    let coprocessors = CoProcessors::base().with_poseidon();
+    let temp_dir = Temp::new_dir().unwrap();
+    let riscv_asm =
+        riscv::compile_rust_to_riscv_asm(&format!("tests/riscv_data/{case}"), &temp_dir);
+    let powdr_asm = riscv::compiler::compile(riscv_asm, &coprocessors, true);
+
+    let pipeline = Pipeline::default().from_asm_string(powdr_asm, Some(PathBuf::from(case)));
+    rust_continuations_dry_run::<GoldilocksField>(pipeline, vec![]);
+}
+
+#[test]
+#[ignore = "Too slow"]
+#[should_panic(expected = "Verified did not say 'PIL OK'.")]
+fn test_many_chunks() {
+    // Compiles and runs the many_chunks.rs example with continuations, runs the full
+    // witness generation & verifies it using Pilcom.
+    // TODO: Make this test pass!
+    let case = "many_chunks.rs";
+    let coprocessors = CoProcessors::base().with_poseidon();
+    let temp_dir = Temp::new_dir().unwrap();
+    let riscv_asm =
+        riscv::compile_rust_to_riscv_asm(&format!("tests/riscv_data/{case}"), &temp_dir);
+    let powdr_asm = riscv::compiler::compile(riscv_asm, &coprocessors, true);
+
+    let pipeline_factory = || {
+        Pipeline::<GoldilocksField>::default()
+            .from_asm_string(powdr_asm.clone(), Some(PathBuf::from(case)))
+            .with_prover_inputs(vec![])
+    };
+    let pipeline_callback = |pipeline: Pipeline<GoldilocksField>| -> Result<(), ()> {
+        verify_pipeline(pipeline, vec![], vec![]);
+        Ok(())
+    };
+    rust_continuations(pipeline_factory, pipeline_callback, vec![]).unwrap();
 }
 
 fn verify_file(case: &str, inputs: Vec<GoldilocksField>, coprocessors: &CoProcessors) {
