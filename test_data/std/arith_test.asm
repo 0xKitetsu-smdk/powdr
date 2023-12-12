@@ -1,7 +1,7 @@
 use std::arith::Arith;
 
 machine Main{
-    degree 100;
+    degree 64;
 
     reg pc[@pc];
     reg A_0[<=];

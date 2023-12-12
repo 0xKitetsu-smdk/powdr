@@ -2,67 +2,68 @@ machine Arith(latch,operation_id){
     /*
         EQ0: A(x1) * B(y1) + C(x2) = D (y2) * 2 ** 16 + op (y3)
     */
-    operation eq0<0> x1_3,x1_2,x1_1,x1_0, y1_3,y1_2,y1_1,y1_0, x2_3,x2_2,x2_1,x2_0 -> y3_3,y3_2,y3_1,y3_0;
+    operation eq0<0> x1[3],x1[2],x1[1],x1[0], y1[3],y1[2],y1[1],y1[0], x2[3],x2[2],x2[1],x2[0] -> y3[3],y3[2],y3[1],y3[0];
     pol constant latch = [0,0,0,0,0,0,0,1]*;
     col witness operation_id;
 
     constant %BASE = 2**4;
     let EL_RANGE = |i| i % %BASE ; 
     let CR_RANGE = |i| i % 2 ** 6;  //  64 
-    
-    pol constant CLK8_0 = [1,0,0,0,0,0,0,0]*;
-    pol constant CLK8_1 = [0,1,0,0,0,0,0,0]*;
-    pol constant CLK8_2 = [0,0,1,0,0,0,0,0]*;
-    pol constant CLK8_3 = [0,0,0,1,0,0,0,0]*;
-    pol constant CLK8_4 = [0,0,0,0,1,0,0,0]*;
-    pol constant CLK8_5 = [0,0,0,0,0,1,0,0]*;
-    pol constant CLK8_6 = [0,0,0,0,0,0,1,0]*;
-    pol constant CLK8_7 = [0,0,0,0,0,0,0,1]*;
 
-    pol commit x1_3,x1_2,x1_1,x1_0,y1_3,y1_2,y1_1,y1_0,x2_3,x2_2,x2_1,x2_0;pol witness y2_3,y2_2,y2_1,y2_0,y3_3,y3_2,y3_1,y3_0;
+    pol commit x1[4],y1[4],x2[4]; pol witness y2[4],y3[4];
 
-    x1_0*CLK8_0 + x1_1*CLK8_1 + x1_2*CLK8_2 + x1_3*CLK8_3 + y1_0*CLK8_4 + y1_1*CLK8_5 + y1_2*CLK8_6 + y1_3*CLK8_7 in EL_RANGE;
-    x2_0*CLK8_0 + x2_1*CLK8_1 + x2_2*CLK8_2 + x2_3*CLK8_3 in EL_RANGE;
-    
-    //y3_0*CLK8_0 + y3_1*CLK8_1 + y3_2*CLK8_2 + y3_3*CLK8_3 + y2_0*CLK8_4 + y2_1*CLK8_5 + y2_2*CLK8_6 + y2_3*CLK8_7 in EL_RANGE;
-    y3_0 in EL_RANGE; y3_1 in EL_RANGE; y3_2 in EL_RANGE;y3_3 in EL_RANGE; y2_0 in EL_RANGE; y2_1 in EL_RANGE;y2_2 in EL_RANGE; y2_3 in EL_RANGE;
-    
-    x1_0' * (1-CLK8_7) = x1_0 * (1-CLK8_7);
-    x1_1' * (1-CLK8_7) = x1_1 * (1-CLK8_7);
-    x1_2' * (1-CLK8_7) = x1_2 * (1-CLK8_7);
-    x1_3' * (1-CLK8_7) = x1_3 * (1-CLK8_7);
-    y1_0' * (1-CLK8_7) = y1_0 * (1-CLK8_7);
-	y1_1' * (1-CLK8_7) = y1_1 * (1-CLK8_7);
-	y1_2' * (1-CLK8_7) = y1_2 * (1-CLK8_7);
-	y1_3' * (1-CLK8_7) = y1_3 * (1-CLK8_7);
-    x2_0' * (1-CLK8_7) = x2_0 * (1-CLK8_7);
-	x2_1' * (1-CLK8_7) = x2_1 * (1-CLK8_7);
-	x2_2' * (1-CLK8_7) = x2_2 * (1-CLK8_7);
-	x2_3' * (1-CLK8_7) = x2_3 * (1-CLK8_7);
+    let clock = |j, row| row % 8 == j;
+    let CLK_0 = |row| clock(0, row);
+    let CLK_1 = |row| clock(1, row);
+    let CLK_2 = |row| clock(2, row);
+    let CLK_3 = |row| clock(3, row);
+    let CLK_4 = |row| clock(4, row);
+    let CLK_5 = |row| clock(5, row);
+    let CLK_6 = |row| clock(6, row);
+    let CLK_7 = |row| clock(7, row);
+    let CLK = [CLK_0,CLK_1,CLK_2,CLK_3,CLK_4,CLK_5,CLK_6,CLK_7];
 
-    y3_0' * (1-CLK8_7) = y3_0 * (1-CLK8_7);
-    y3_1' * (1-CLK8_7) = y3_1 * (1-CLK8_7);
-    y3_2' * (1-CLK8_7) = y3_2 * (1-CLK8_7);
-    y3_3' * (1-CLK8_7) = y3_3 * (1-CLK8_7);
-    y2_0' * (1-CLK8_7) = y2_0 * (1-CLK8_7);
-	y2_1' * (1-CLK8_7) = y2_1 * (1-CLK8_7);
-	y2_2' * (1-CLK8_7) = y2_2 * (1-CLK8_7);
-	y2_3' * (1-CLK8_7) = y2_3 * (1-CLK8_7);
-    
+    let fold = |length, f, initial, folder| match length {
+        0 => initial,
+        _ => folder(fold(length - 1, f, initial, folder), f(length - 1))
+    };
+
+    let make_array = |length, f| fold(length, f, [], |acc, e| acc + [e]);
+    let sum = |length, f| fold(length, f, 0, |acc, e| acc + e);
+
+    let fixed_inside_block = [|x,clk| (x - x') * (1 - clk) == 0][0];
+
+    let array_as_fun = |arr, len| |i| match i < len {
+		1 => arr[i],
+		_ => 0,
+	};
+    let prepend_zeros = |arr, amount| |i| match i < amount { 1 => 0, _ => arr(i - amount) };
+    let dot_prod = |n, a, b| sum(n, |i| a(i) * b(i));
+	let product = |a, b| |n| dot_prod(n + 1, a, |i| b(n - i));
+
+    make_array(4, |i| fixed_inside_block(x1[i],CLK[7]));
+    make_array(4, |i| fixed_inside_block(y1[i],CLK[7]));
+    make_array(4, |i| fixed_inside_block(x2[i],CLK[7]));
+    make_array(4, |i| fixed_inside_block(y2[i],CLK[7]));
+    make_array(4, |i| fixed_inside_block(y3[i],CLK[7]));
+
+    sum(4, |i| x1[i] * CLK[i]) + sum(4, |i| y1[i] * CLK[4 + i]) in EL_RANGE;
+    sum(4, |i| x2[i] * CLK[i]) in EL_RANGE;
+    //sum(4, |i| y3[i] * CLK[i]) + sum(4, |i| y2[i] * CLK[4 + i]) in EL_RANGE;
+    y3[0] in EL_RANGE; y3[1] in EL_RANGE; y3[2] in EL_RANGE;y3[3] in EL_RANGE; y2[0] in EL_RANGE; y2[1] in EL_RANGE;y2[2] in EL_RANGE; y2[3] in EL_RANGE;
+
+    let x1f = array_as_fun(x1, 4);
+    let y1f = array_as_fun(y1, 4);
+	let x2f = array_as_fun(x2, 4);
+	let y2f = array_as_fun(y2, 4);
+	let y3f = array_as_fun(y3, 4);
+
+    let eq0 = [|nr|product(x1f, y1f)(nr)+ x2f(nr)- prepend_zeros(y2f, 4)(nr) - y3f(nr)][0];
+
     let carry;carry in CR_RANGE;
-    
-    carry * CLK8_0 = 0;
 
-    pol eq0_0 = (x1_0 * y1_0) + x2_0 - y3_0;    
-	pol eq0_1 = (x1_0 * y1_1) + (x1_1 * y1_0) + x2_1 - y3_1;    // = 27000 + 51000 + 0 - 60
-	pol eq0_2 = (x1_0 * y1_2) + (x1_1 * y1_1) + (x1_2 * y1_0) + x2_2 - y3_2;
-	pol eq0_3 = (x1_0 * y1_3) + (x1_1 * y1_2) + (x1_2 * y1_1) + (x1_3 * y1_0) + x2_3 - y3_3;
-	pol eq0_4 = (x1_1 * y1_3) + (x1_2 * y1_2) + (x1_3 * y1_1) - y2_0;
-	pol eq0_5 = (x1_2 * y1_3) + (x1_3 * y1_2) - y2_1;
-	pol eq0_6 = (x1_3 * y1_3) - y2_2;
-	pol eq0_7 = - y2_3;
+    carry * CLK[0] = 0;
 
-    carry'* %BASE = carry + eq0_0 * CLK8_0 + eq0_1 * CLK8_1 + eq0_2 * CLK8_2 + eq0_3 * CLK8_3 + eq0_4 * CLK8_4 + eq0_5 * CLK8_5 + eq0_6 * CLK8_6 + eq0_7 * CLK8_7;
-    //let eq0;eq0 = eq0_0 * CLK8_0 + eq0_1 * CLK8_1 + eq0_2 * CLK8_2 + eq0_3 * CLK8_3 + eq0_4 * CLK8_4 + eq0_5 * CLK8_5 + eq0_6 * CLK8_6 + eq0_7 * CLK8_7;
-    //carry' * %BASE = carry + eq0;
+    sum(8, |i| eq0(i) * CLK[i]) + carry = carry' * %BASE;
+
 }
