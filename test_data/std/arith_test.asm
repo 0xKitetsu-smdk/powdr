@@ -21,8 +21,6 @@ machine Main{
     reg D_2[<=];
     reg D_3[<=];
     
-    reg X0[<=];
-    reg X1[<=];
     reg t_0;
     reg t_1;
     reg t_2;
@@ -32,22 +30,16 @@ machine Main{
 
     instr eq0 A_3,A_2,A_1,A_0,B_3,B_2,B_1,B_0,C_3,C_2,C_1,C_0 -> D_3,D_2,D_1,D_0 = arith.eq0
 
-    instr assert_eq X0, X1 {
-        X0 = X1
+    instr assert_eq4 A_3,A_2,A_1,A_0,B_3,B_2,B_1,B_0 {
+        A_3 = B_3,A_2 = B_2,A_1 = B_1,A_0 = B_0
     }
 
 
     function main {
         t_3,t_2,t_1,t_0 <== eq0(15,15,15,15,15,15,15,15,0,0,0,0);
-        assert_eq t_0,1;
-        assert_eq t_1,0;
-        assert_eq t_2,0;
-        assert_eq t_3,0;
+        assert_eq4 t_3,t_2,t_1,t_0,0,0,0,1;
 
         t_3,t_2,t_1,t_0 <== eq0(15,15,15,15,0,0,0,1,15,15,15,15);
-        assert_eq t_0,14;
-        assert_eq t_1,15;
-        assert_eq t_2,15;
-        assert_eq t_3,15;
+        assert_eq4 t_3,t_2,t_1,t_0,15,15,15,14;
     }
 }
